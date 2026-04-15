@@ -110,7 +110,7 @@ class XhsLitePoster:
     def _find_chromium(self) -> Optional[str]:
         """查找 Chromium 可执行文件"""
         candidates = [
-            # xhs_ai_publisher 的 Playwright 缓存
+            # Playwright 缓存（由 xhs-api-lite 自行安装）
             os.path.join(PLAYWRIGHT_BROWSERS_PATH, "chromium_headless_shell-1208", "chrome-linux", "headless_shell"),
             os.path.join(PLAYWRIGHT_BROWSERS_PATH, "chromium-1208", "chrome-linux", "chromium"),
             # 系统 chromium
@@ -175,8 +175,8 @@ class XhsLitePoster:
         await self._click_sms_trigger()
         await asyncio.sleep(1)
 
-        # 读取用户输入的验证码
-        code = input("请查收短信验证码，输入后回车（直接回车则跳过自动填写）: ").strip()
+        # 读取用户输入的验证码（后台运行时不接受 stdin，改用文件队列）
+        code = self._read_sms_code()
 
         if code:
             filled = await self._fill_sms_code(code)
@@ -288,6 +288,35 @@ class XhsLitePoster:
             print(f"✅ 内容已填入，截图: {preview_path}")
             print("请在浏览器中确认内容，点击发布。")
             return True
+
+    # ── 验证码读取（支持后台 nohup 模式）─────────────────────────────────
+
+    def _read_sms_code(self, timeout: int = 300, poll_interval: int = 3) -> str:
+        """
+        后台运行时无法读 stdin，改为文件队列轮询。
+        打印队列路径，用户将验证码写入文件后自动读取。
+        """
+        queue_file = self.data_dir / "xhs_sms_queue.txt"
+        queue_file.write_text("")  # 创建空文件
+
+        print(f"\n{'='*50}")
+        print(f"请查收短信验证码，收到后写入以下文件后回车：")
+        print(f"  文件: {queue_file}")
+        print(f"  例如: echo '123456' > {queue_file}")
+        print(f"或直接在终端执行（另一窗口）：")
+        print(f"  echo '你的验证码' > {queue_file}")
+        print(f"{'='*50}\n")
+
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            code = queue_file.read_text().strip()
+            if code:
+                queue_file.unlink(missing_ok=True)
+                return code
+            time.sleep(poll_interval)
+
+        queue_file.unlink(missing_ok=True)
+        return ""
 
     # ── 内部方法 ──────────────────────────────────────────────────────────
 

@@ -71,7 +71,11 @@ python3 ~/.hermes/skills/xhs-api-lite/scripts/xhs_api.py status
 python3 ~/.hermes/skills/xhs-api-lite/scripts/xhs_api.py login --phone 13800138000
 ```
 
-流程：打开浏览器 → 填写手机号 → 点击获取验证码 → 查收短信输入验证码 → 登录成功自动保存。
+流程：打开浏览器 → 填写手机号 → 点击获取验证码 → 收到短信后：
+```bash
+echo '123456' > ~/.xhs_system/xhs_sms_queue.txt
+```
+脚本自动检测并完成登录，登录态保存在 `~/.xhs_system/`。
 
 ### 3. 预览发草稿（默认方式）
 
@@ -135,6 +139,21 @@ python3 ~/.hermes/skills/xhs-api-lite/scripts/xhs_api.py publish \
 | `~/.xhs_system/xhs_cookies.json` | cookies 备份 |
 | `~/.xhs_system/xhs_settings.json` | 手机号等配置 |
 | `~/.xhs_system/preview_*.png` | 预览截图（auto_publish=false 时生成） |
+
+---
+
+## 验证码输入：后台运行模式
+
+`login` 命令使用 nohup 启动，**不支持 `input()` 读 stdin**，改为文件轮询：
+
+```
+~/.xhs_system/xhs_sms_queue.txt
+```
+
+登录流程启动后：
+1. 收到短信验证码
+2. 执行 `echo '验证码' > ~/.xhs_system/xhs_sms_queue.txt`
+3. 脚本每 3 秒检查一次，写入后自动继续
 
 ---
 
