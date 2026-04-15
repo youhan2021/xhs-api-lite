@@ -11,7 +11,7 @@ triggers:
 
 # XHS API Lite — 小红书发布 Skill
 
-> 自包含实现，不依赖 xhs_ai_publisher 项目。登录态存放在 `~/.xhs_system/`。
+> **完全自包含实现**，不依赖 xhs_ai_publisher 项目。所有逻辑自行重写，仅依赖 `playwright` 库。
 
 ---
 
@@ -73,7 +73,7 @@ python3 ~/.hermes/skills/xhs-api-lite/scripts/xhs_api.py login --phone 138001380
 
 流程：打开浏览器 → 填写手机号 → 点击获取验证码 → 查收短信输入验证码 → 登录成功自动保存。
 
-### 3. 预览发草稿（推荐首次使用）
+### 3. 预览发草稿（默认方式）
 
 ```bash
 python3 ~/.hermes/skills/xhs-api-lite/scripts/xhs_api.py publish \
@@ -81,11 +81,10 @@ python3 ~/.hermes/skills/xhs-api-lite/scripts/xhs_api.py publish \
   --content "正文内容..." \
   --images ~/.hermes/research/imgs/cover.png \
            ~/.hermes/research/imgs/page1.png \
-           ~/.hermes/research/imgs/page2.png \
-  --auto-publish false
+           ~/.hermes/research/imgs/page2.png
 ```
 
-浏览器打开，内容自动填入，**停在发布确认页**，你去手动点发布。
+浏览器打开，内容自动填入，**停在发布确认页**，你去手动点发布。`--auto-publish false`（默认）时适用。
 
 ### 4. 直接发布（无人值守）
 
@@ -97,6 +96,8 @@ python3 ~/.hermes/skills/xhs-api-lite/scripts/xhs_api.py publish \
            ~/.hermes/research/imgs/page1.png \
   --auto-publish true
 ```
+
+⚠️ 首次发帖建议用预览模式确认格式无误。
 
 ---
 
