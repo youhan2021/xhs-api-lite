@@ -65,17 +65,35 @@ CLI 引导手机号登录 → 保存登录态
 python3 ~/.hermes/skills/xhs-api-lite/scripts/xhs_api.py status
 ```
 
-### 2. 手机号登录（只需执行一次）
+### 2. 手机号登录（两阶段，推荐）
 
+**阶段一：启动登录脚本发送验证码（必须 xvfb-run）**
 ```bash
-python3 ~/.hermes/skills/xhs-api-lite/scripts/xhs_api.py login --phone 13800138000
+nohup xvfb-run -a python3 -u ~/.hermes/skills/xhs-api-lite/scripts/xhs_api.py login \
+  --phone 13800138000 > /tmp/xhs_login.log 2>&1 &
+echo "PID=$!"
+sleep 40 && cat /tmp/xhs_login.log
+# 看到"已点击获取验证码"后进行阶段二
 ```
 
-流程：打开浏览器 → 填写手机号 → 点击获取验证码 → 收到短信后：
+**阶段二：收到验证码后写入队列文件**
 ```bash
-echo '123456' > ~/.xhs_system/xhs_sms_queue.txt
+echo '6位验证码' > ~/.xhs_system/xhs_sms_queue.txt
+sleep 10 && cat /tmp/xhs_login.log
 ```
-脚本自动检测并完成登录，登录态保存在 `~/.xhs_system/`。
+
+> 如果日志显示"无法自动填写验证码"但队列文件被成功读取，说明验证码 input
+> 选择器已失效（小红书 UI 频繁更新导致）。改用 browser 工具手动完成剩余步骤：
+> 1. `browser_navigate` → https://creator.xiaohongshu.com/login
+> 2. `browser_type` 手机号（ref=e3）→ `browser_click` 发送验证码
+> 3. 收到短信后 `browser_type` 填入验证码（ref=e4）→ `browser_click` 登录
+> 4. 登录成功后备份会话：
+>    `cp ~/.xhs_system/xhs_storage_state.json ~/.xhs_system/xhs_storage_state.json.bak`
+
+**已知坑：**
+- `input()` 在 nohup 后台进程里无法读取，必须用文件队列
+- 小红书 UI 更新会导致 SMS input 选择器失效，需切换 browser 工具手动填
+- 登录态会过期，过期后需重新 login
 
 ### 3. 预览发草稿（默认方式）
 
@@ -141,6 +159,26 @@ python3 ~/.hermes/skills/xhs-api-lite/scripts/xhs_api.py publish \
 | `~/.xhs_system/preview_*.png` | 预览截图（auto_publish=false 时生成） |
 
 ---
+
+## ⚠️ 关键：必须用 xvfb-run 包装
+
+**所有命令（login / publish）都必须用 `xvfb-run` 包装**，否则 Playwright 启动 headed Chromium 时会报错 `Missing X server or $DISPLAY`：
+
+```bash
+# ✅ 正确：xvfb-run 包装
+xvfb-run -a python3 ~/.hermes/skills/xhs-api-lite/scripts/xhs_api.py login --phone 13800138000
+xvfb-run -a python3 ~/.hermes/skills/xhs-api-lite/scripts/xhs_api.py publish --title "..." --content "..." --images ...
+
+# ❌ 错误：直接运行，无 DISPLAY 时必败
+python3 ~/.hermes/skills/xhs-api-lite/scripts/xhs_api.py login --phone 13800138000
+```
+
+推荐 nohup 方式（后台运行，验证码通过文件队列写入）：
+```bash
+nohup xvfb-run -a python3 -u ~/.hermes/skills/xhs-api-lite/scripts/xhs_api.py \
+  login --phone 13800138000 > /tmp/xhs_login.log 2>&1 &
+echo "PID=$!"
+```
 
 ## 验证码输入：后台运行模式
 
